@@ -6,7 +6,7 @@
 </script>
 
 <h1>Login/Register</h1>
-<form method="post" action="?/login" use:enhance>
+<!-- <form method="post" action="?/login" use:enhance>
 	<label>
 		Username
 		<input
@@ -30,5 +30,10 @@
 		class="rounded-md bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
 		>Register</button
 	>
+</form> -->
+
+<form method="post" action="?/github" use:enhance>
+	<button class="rounded-md bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
+		>Login with GitHub</button
+	>
 </form>
-<p style="color: red">{form?.message ?? ''}</p>

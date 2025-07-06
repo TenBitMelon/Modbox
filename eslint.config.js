@@ -36,5 +36,23 @@ export default ts.config(
 				svelteConfig
 			}
 		}
-	}
+	},
+	{
+		rules: {
+			'@typescript-eslint/no-unused-vars': [
+				'warn',
+				{
+					argsIgnorePattern: '^_',
+					caughtErrorsIgnorePattern: '^_',
+					varsIgnorePattern: '^_'
+				}
+			]
+		}
+	},
+	{
+		rules: {
+			'prettier/prettier': 'warn'
+		}
+	},
+	{ ignores: ['**/.svelte-kit', 'build/', 'dist/'] }
 );

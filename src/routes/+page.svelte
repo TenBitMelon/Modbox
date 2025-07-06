@@ -1,2 +1,38 @@
+<script lang="ts">
+	import { enhance } from '$app/forms';
+	import type { PageProps } from './$types';
+
+	let { form }: PageProps = $props();
+
+	function makeRepo() {
+		console.log('making a repo');
+	}
+</script>
+
 <h1>Welcome to SvelteKit</h1>
 <p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+
+<a href="/auth/sign-in">Login</a>
+
+<p style="color: red">{form?.message ?? ''}</p>
+
+<form method="post" action="?/createRepo" use:enhance>
+	<button onclick={makeRepo} class="rounded-md bg-blue-500 px-4 py-2 text-white">
+		Click to make a repository
+	</button>
+</form>
+
+<h2>Your Repos</h2>
+<form method="post" action="?/listRepos" use:enhance>
+	<button class="rounded-md bg-blue-500 px-4 py-2 text-white"> List your repos </button>
+</form>
+
+{JSON.stringify(form?.data)}
+
+{#if form?.data}
+	<ul>
+		{#each form.data as repo}
+			<li>{repo.name}</li>
+		{/each}
+	</ul>
+{/if}
