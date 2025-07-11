@@ -35,6 +35,9 @@ importers:
       postgres:
         specifier: ^3.4.5
         version: 3.4.7
+      typerinth:
+        specifier: ^1.2.0
+        version: 1.2.0(typescript@5.8.3)
     devDependencies:
       '@eslint/compat':
         specifier: ^1.2.5
@@ -1243,6 +1246,10 @@ packages:
     resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
     engines: {node: '>=18'}
 
+  clone@2.1.2:
+    resolution: {integrity: sha512-3Pe/CF1Nn94hyhIYpjtiLhdCoEoz0DqQ+988E9gmeEdQZlojxnOb74wctFyuwWQHzqyf9X7C7MG8juUpqBJT8w==}
+    engines: {node: '>=0.8'}
+
   clsx@2.1.1:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
@@ -1785,6 +1792,10 @@ packages:
     resolution: {integrity: sha512-kOCT/1MCPAxY5iUV3wytNFUMUolzuwd/VF/1KCx7kf6CutrOsTie+84zTGTpgQycjvfLdBBdvBvFLqFD2c0wkQ==}
     engines: {node: '>=18'}
 
+  node-cache@5.1.2:
+    resolution: {integrity: sha512-t1QzWwnk4sjLWaQAS8CHgOJ+RAfmHpxFWmc36IWTiWHQfs0w5JDMBS1b1ZxQteo0vVVuWJvIUKHDkkeK7vIGCg==}
+    engines: {node: '>= 8.0.0'}
+
   octokit@5.0.3:
     resolution: {integrity: sha512-+bwYsAIRmYv30NTmBysPIlgH23ekVDriB07oRxlPIAH5PI0yTMSxg5i5Xy0OetcnZw+nk/caD4szD7a9YZ3QyQ==}
     engines: {node: '>= 20'}
@@ -2076,6 +2087,11 @@ packages:
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
+
+  typerinth@1.2.0:
+    resolution: {integrity: sha512-bgUonbjv8aAwrQ7NJr59hfd0IGTrzXIaW+O9/iNcYNg988Ya+E9M5SRF4TcfPZgqL80YRSSnpfUHSjJsxwGcrw==}
+    peerDependencies:
+      typescript: ^5.6.2
 
   typescript-eslint@8.35.1:
     resolution: {integrity: sha512-xslJjFzhOmHYQzSB/QTeASAHbjmxOGEP6Coh93TXmUBFQoJ1VU35UHIDmG06Jd6taf3wqqC1ntBnCMeymy5Ovw==}
@@ -3121,6 +3137,8 @@ snapshots:
 
   chownr@3.0.0: {}
 
+  clone@2.1.2: {}
+
   clsx@2.1.1: {}
 
   color-convert@2.0.1:
@@ -3605,6 +3623,10 @@ snapshots:
     optionalDependencies:
       '@rollup/rollup-linux-x64-gnu': 4.44.1
 
+  node-cache@5.1.2:
+    dependencies:
+      clone: 2.1.2
+
   octokit@5.0.3:
     dependencies:
       '@octokit/app': 16.0.1
@@ -3855,6 +3877,11 @@ snapshots:
   type-check@0.4.0:
     dependencies:
       prelude-ls: 1.2.1
+
+  typerinth@1.2.0(typescript@5.8.3):
+    dependencies:
+      node-cache: 5.1.2
+      typescript: 5.8.3
 
   typescript-eslint@8.35.1(eslint@9.30.1(jiti@2.4.2))(typescript@5.8.3):
     dependencies:

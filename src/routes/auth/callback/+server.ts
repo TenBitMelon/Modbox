@@ -1,11 +1,10 @@
 import { github } from '$lib/server/auth';
-import { db } from '$lib/server/db';
+import { db, generateId, table } from '$lib/server/db';
 import { error, redirect } from '@sveltejs/kit';
 import type { OAuth2Tokens } from 'arctic';
 import * as auth from '$lib/server/auth';
 import { eq } from 'drizzle-orm';
-import * as table from '$lib/server/db/schema';
-import { encodeBase32LowerCase } from '@oslojs/encoding';
+
 import type { RequestEvent } from '../$types';
 
 export async function GET(event: RequestEvent): Promise<Response> {
@@ -59,7 +58,7 @@ export async function GET(event: RequestEvent): Promise<Response> {
 
 	// Create a new user
 	try {
-		const userId = generateUserId();
+		const userId = generateId();
 		await db.insert(table.user).values({
 			id: userId,
 			username: githubUsername,
@@ -80,11 +79,4 @@ export async function GET(event: RequestEvent): Promise<Response> {
 			Location: '/'
 		}
 	});
-}
-
-function generateUserId() {
-	// ID with 120 bits of entropy, or about the same as UUID v4.
-	const bytes = crypto.getRandomValues(new Uint8Array(15));
-	const id = encodeBase32LowerCase(bytes);
-	return id;
 }

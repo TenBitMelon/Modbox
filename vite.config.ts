@@ -6,7 +6,7 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	server: {
 		watch: {
-			ignored: ['.ottotime']
+			ignored: ['**/.*']
 		}
 	}
 });

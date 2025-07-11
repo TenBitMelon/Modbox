@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 
-	let { form }: PageProps = $props();
+	let { form, data }: PageProps = $props();
 
 	function makeRepo() {
 		console.log('making a repo');
@@ -29,10 +29,12 @@
 
 {JSON.stringify(form?.data)}
 
-{#if form?.data}
-	<ul>
-		{#each form.data as repo}
-			<li>{repo.name}</li>
-		{/each}
-	</ul>
-{/if}
+<h2>Your modpacks</h2>
+{#each data.modpacks as modpack}
+	<a href="/modpack/{modpack.id}">{modpack.name}</a>
+{/each}
+
+<form method="post" action="?/createModpack" use:enhance>
+	<input name="name" value="test-modpack" />
+	<button class="rounded-md bg-blue-500 px-4 py-2 text-white"> Create a modpack </button>
+</form>
