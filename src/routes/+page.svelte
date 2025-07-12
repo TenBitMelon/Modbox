@@ -9,32 +9,29 @@
 	}
 </script>
 
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
-
-<a href="/auth/sign-in">Login</a>
-
-<p style="color: red">{form?.message ?? ''}</p>
-
-<form method="post" action="?/createRepo" use:enhance>
+<!-- <form method="post" action="?/createRepo" use:enhance>
 	<button onclick={makeRepo} class="rounded-md bg-blue-500 px-4 py-2 text-white">
 		Click to make a repository
 	</button>
-</form>
+</form> -->
 
-<h2>Your Repos</h2>
+<!-- <h2>Your Repos</h2>
 <form method="post" action="?/listRepos" use:enhance>
 	<button class="rounded-md bg-blue-500 px-4 py-2 text-white"> List your repos </button>
-</form>
+</form> -->
 
-{JSON.stringify(form?.data)}
+<!-- {JSON.stringify(form?.data)} -->
 
-<h2>Your modpacks</h2>
+<h2>-- Create</h2>
+
+<a href="/create">Create a modpack</a>
+
+<h2>-- All modpacks</h2>
+
 {#each data.modpacks as modpack}
 	<a href="/modpack/{modpack.id}">{modpack.name}</a>
 {/each}
 
-<form method="post" action="?/createModpack" use:enhance>
-	<input name="name" value="test-modpack" />
-	<button class="rounded-md bg-blue-500 px-4 py-2 text-white"> Create a modpack </button>
+<form method="post" action="?/seedDB" use:enhance>
+	<button class="rounded-md bg-blue-500 px-4 py-2 text-white"> Seed the database </button>
 </form>

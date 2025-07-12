@@ -6,10 +6,14 @@
 </script>
 
 <!-- Thing if user is logged in -->
-{#if data.user}
-	<div class="bg-blue-500 text-white">
+<div class="flex justify-between bg-blue-500 text-white">
+	{#if data.user}
 		<p>Hello {data.user.username}!</p>
-	</div>
-{/if}
+		<a href="/auth/sign-out">Logout</a>
+	{:else}
+		<p>Hello anonymous!</p>
+		<a href="/auth/sign-in">Login</a>
+	{/if}
+</div>
 
 {@render children()}

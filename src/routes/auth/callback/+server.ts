@@ -1,5 +1,5 @@
 import { github } from '$lib/server/auth';
-import { db, generateId, table } from '$lib/server/db';
+import { db, table } from '$lib/server/db';
 import { error, redirect } from '@sveltejs/kit';
 import type { OAuth2Tokens } from 'arctic';
 import * as auth from '$lib/server/auth';
@@ -58,13 +58,18 @@ export async function GET(event: RequestEvent): Promise<Response> {
 
 	// Create a new user
 	try {
-		const userId = generateId();
-		await db.insert(table.user).values({
-			id: userId,
-			username: githubUsername,
-			githubId: githubUserId,
-			githubToken: accessToken
-		});
+		const dbResult = await db
+			.insert(table.user)
+			.values({
+				username: githubUsername,
+				githubId: githubUserId,
+				githubToken: accessToken
+			})
+			.returning({
+				insertedId: table.user.id
+			});
+
+		const userId = dbResult[0].insertedId;
 
 		const sessionToken = auth.generateSessionToken();
 		const session = await auth.createSession(sessionToken, userId);
