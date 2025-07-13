@@ -31,6 +31,7 @@ export const actions: Actions = {
 		const name = formData.get('name')?.toString();
 		const version = formData.get('version')?.toString();
 		const loader = formData.get('loader')?.toString();
+		const loaderVersion = formData.get('loaderVersion')?.toString();
 
 		if (!name)
 			return fail(400, { message: 'You must provide a name for the modpack', field: 'name' });
@@ -38,6 +39,11 @@ export const actions: Actions = {
 			return fail(400, { message: 'You must provide a version for the modpack', field: 'version' });
 		if (!loader)
 			return fail(400, { message: 'You must provide a loader for the modpack', field: 'loader' });
+		if (!loaderVersion)
+			return fail(400, {
+				message: 'You must provide a loader version for the modpack',
+				field: 'loaderVersion'
+			});
 
 		const github = new Octokit({
 			auth: user.githubToken
@@ -79,7 +85,9 @@ export const actions: Actions = {
 					email: 'modbox@modbox.com'
 				},
 				content: encodeBase64(
-					new TextEncoder().encode(createPackToml(name, user.username, version, loader, version))
+					new TextEncoder().encode(
+						createPackToml(name, user.username, version, loader, loaderVersion)
+					)
 				)
 			}),
 			(e) => e as RequestError
