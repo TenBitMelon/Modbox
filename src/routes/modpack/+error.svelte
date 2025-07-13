@@ -9,3 +9,5 @@
 <p>{page.error?.message}</p>
 
 <a href="/">Go back home</a>
+
+<pre>{JSON.stringify(page.error, null, 2)}</pre>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import { ModLoaders, type ModLoaderComponent } from '$lib';
+	import { ModLoaders, type ModLoaderComponent, type ModLoadersType } from '$lib/mod-loaders';
 	import type { PageProps } from './$types';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
@@ -43,11 +43,14 @@
 
 		const loaders: { name: string; friendlyName: string }[] = [];
 		for (const loader in ModLoaders) {
-			const res = await fromPromise(ModLoaders[loader].versionListGetter(version), () => null);
+			const res = await fromPromise(
+				ModLoaders[loader as ModLoadersType].versionListGetter(version),
+				() => null
+			);
 			if (res.isErr()) continue;
 			const [versions] = res.value;
 			if (versions.length > 0) {
-				loaders.push(ModLoaders[loader]);
+				loaders.push(ModLoaders[loader as ModLoadersType]);
 			}
 		}
 
@@ -59,7 +62,7 @@
 		if (!browser || !loader) return [];
 
 		const res = await fromPromise(
-			ModLoaders[loader].versionListGetter(selectedVersion),
+			ModLoaders[loader as ModLoadersType].versionListGetter(selectedVersion),
 			() => null
 		);
 		if (res.isErr()) return [];
