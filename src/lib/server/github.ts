@@ -1,8 +1,7 @@
-import { Octokit, RequestError } from 'octokit';
+import { Octokit } from 'octokit';
 import { fromPromise } from 'neverthrow';
 import { encodeBase64, decodeBase64 } from '@oslojs/encoding';
 import { parseGitHubUrl } from '$lib';
-import { error } from '@sveltejs/kit';
 
 export interface GitHubFile {
 	path: string;
@@ -40,13 +39,13 @@ export class GitHubService {
 				owner: this.owner,
 				repo: this.repo,
 				path,
-				ref
+				ref,
 			}),
-			(e) => e as RequestError
+			(e) => e,
 		);
 
 		if (result.isErr()) {
-			throw new Error(`Error fetching ${path}: ${result.error.message}`);
+			throw new Error(`Error fetching ${path}: ${result.error}`);
 		}
 
 		const { data, status } = result.value;
@@ -60,47 +59,63 @@ export class GitHubService {
 		return { content, sha: data.sha };
 	}
 
-	async createOrUpdateFile(
-		path: string,
-		content: string,
-		message: string,
-		sha?: string,
-		branch = 'main'
-	): Promise<void> {
-		const result = await fromPromise(
-			this.octokit.rest.repos.createOrUpdateFileContents({
+	async createCommit(commit: GitHubCommit): Promise<void> {
+		const branch = commit.branch || 'main';
+
+		// Get the current HEAD commit
+		const refResult = await fromPromise(
+			this.octokit.rest.git.getRef({
 				owner: this.owner,
 				repo: this.repo,
-				path,
-				message,
-				branch,
-				sha,
-				committer: {
-					name: 'ModBox',
-					email: 'modbox@modbox.com'
-				},
-				content: encodeBase64(new TextEncoder().encode(content))
+				ref: `heads/${branch}`,
 			}),
-			(e) => e as RequestError
+			(e) => e,
 		);
 
-		if (result.isErr()) {
-			throw new Error(`Error updating ${path}: ${result.error.message}`);
+		if (refResult.isErr()) {
+			throw new Error('Failed to get branch reference');
 		}
-	}
 
-	// Future implementation for batch commits
-	async createCommit(commit: GitHubCommit): Promise<void> {
-		// TODO: Implement batch commit functionality
-		// For now, fall back to individual file updates
-		for (const file of commit.files) {
-			await this.createOrUpdateFile(
-				file.path,
-				file.content,
-				commit.message,
-				file.sha,
-				commit.branch
-			);
+		const expectedHeadOid = refResult.value.data.object.sha;
+
+		// Prepare file changes
+		const fileChanges = commit.files.map((file) => ({
+			path: file.path,
+			contents: encodeBase64(new TextEncoder().encode(file.content)),
+		}));
+
+		// Create the commit using GraphQL
+		const mutation = `
+      mutation($input: CreateCommitOnBranchInput!) {
+        createCommitOnBranch(input: $input) {
+          commit {
+            url
+            oid
+          }
+        }
+      }
+    `;
+
+		const variables = {
+			input: {
+				branch: {
+					repositoryNameWithOwner: `${this.owner}/${this.repo}`,
+					branchName: branch,
+				},
+				message: {
+					headline: commit.message,
+				},
+				fileChanges: {
+					additions: fileChanges,
+				},
+				expectedHeadOid,
+			},
+		};
+
+		const result = await fromPromise(this.octokit.graphql(mutation, variables), (e) => e);
+
+		if (result.isErr()) {
+			throw new Error(`Failed to create commit: ${result.error}`);
 		}
 	}
 }

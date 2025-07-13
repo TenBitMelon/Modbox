@@ -1,5 +1,5 @@
 import toml from 'smol-toml';
-import { GitHubService } from './github';
+import { GitHubService, type GitHubFile } from './github';
 import { hashString, encodeStringToBase64 } from './encoding';
 import type { ModLoaders, ModLoadersType } from '$lib/mod-loaders';
 
@@ -38,84 +38,167 @@ export class TomlManager {
 	}
 
 	async getIndexToml(): Promise<{ content: ModpackIndex; raw: string; sha: string }> {
-		const { content: raw, sha } = await this.github.getFile('index.toml');
-		const content = toml.parse(raw) as unknown as ModpackIndex;
-		return { content, raw, sha };
+		try {
+			const { content: raw, sha } = await this.github.getFile('index.toml');
+			const content = toml.parse(raw) as unknown as ModpackIndex;
+			return { content, raw, sha };
+		} catch (error) {
+			// Create default index if it doesn't exist
+			const defaultIndex: ModpackIndex = {
+				'hash-format': 'sha256',
+				files: [],
+			};
+			const raw = toml.stringify(defaultIndex);
+			return { content: defaultIndex, raw, sha: '' };
+		}
 	}
 
-	async addModToIndex(modSlug: string, modContent: string): Promise<void> {
-		const { content: index, sha: indexSha } = await this.getIndexToml();
-		const { content: pack, sha: packSha } = await this.getPackToml();
+	async addModsBatch(
+		mods: {
+			slug: string;
+			content: string;
+		}[],
+		commitMessage: string,
+	): Promise<void> {
+		// Get current state
+		const { content: index } = await this.getIndexToml();
+		const { content: pack } = await this.getPackToml();
 
-		// Add mod file entry to index
-		const modHash = hashString(modContent);
-		const modFilePath = `mods/${modSlug}.toml`;
+		// Prepare all files for the commit
+		const filesToCommit: GitHubFile[] = [];
 
-		// Check if mod already exists in index
-		if (index.files.find((f) => f.file === modFilePath)) return;
+		// Add/update mod files and update index
+		for (const mod of mods) {
+			const modFilePath = `mods/${mod.slug}.toml`;
+			const modHash = hashString(mod.content);
 
-		// Remove existing entry if it exists
-		index.files = index.files.filter((f) => f.file !== modFilePath);
+			// Remove existing entry if it exists
+			index.files = index.files.filter((f) => f.file !== modFilePath);
 
-		// Add new entry
-		index.files.push({
-			file: modFilePath,
-			hash: modHash,
-			metafile: true
+			// Add new entry
+			index.files.push({
+				file: modFilePath,
+				hash: modHash,
+				metafile: true,
+			});
+
+			// Add mod file to commit
+			filesToCommit.push({
+				path: modFilePath,
+				content: mod.content,
+			});
+		}
+
+		// Update pack.toml with new index hash
+		const indexContent = toml.stringify(index);
+		const indexHash = encodeStringToBase64(hashString(indexContent));
+		pack.index.hash = indexHash;
+
+		// Add index.toml to commit
+		filesToCommit.push({
+			path: 'index.toml',
+			content: indexContent,
 		});
 
-		// Update pack.toml with new index hash
-		const indexContent = toml.stringify(index);
-		const indexHash = hashString(indexContent);
-		pack.index.hash = indexHash;
+		// Add pack.toml to commit
+		filesToCommit.push({
+			path: 'pack.toml',
+			content: toml.stringify(pack),
+		});
 
-		// Save all files
-		await this.github.createOrUpdateFile(
-			'index.toml',
-			indexContent,
-			`Add ${modSlug} to index`,
-			indexSha
-		);
-
-		await this.github.createOrUpdateFile(
-			'pack.toml',
-			toml.stringify(pack),
-			`Update pack index for ${modSlug}`,
-			packSha
-		);
-
-		await this.github.createOrUpdateFile(modFilePath, modContent, `Add ${modSlug} mod file`);
+		// Create single commit with all changes
+		await this.github.createCommit({
+			message: commitMessage,
+			files: filesToCommit,
+		});
 	}
 
-	async removeModFromIndex(modSlug: string): Promise<void> {
-		const { content: index, sha: indexSha } = await this.getIndexToml();
-		const { content: pack, sha: packSha } = await this.getPackToml();
+	async removeModsBatch(modSlugs: string[], commitMessage: string): Promise<void> {
+		// Get current state
+		const { content: index } = await this.getIndexToml();
+		const { content: pack } = await this.getPackToml();
 
-		const modFilePath = `mods/${modSlug}.toml`;
-
-		// Remove mod file entry from index
-		index.files = index.files.filter((f) => f.file !== modFilePath);
+		// Remove mod file entries from index
+		for (const modSlug of modSlugs) {
+			const modFilePath = `mods/${modSlug}.toml`;
+			index.files = index.files.filter((f) => f.file !== modFilePath);
+		}
 
 		// Update pack.toml with new index hash
 		const indexContent = toml.stringify(index);
-		const indexHash = hashString(indexContent);
+		const indexHash = encodeStringToBase64(hashString(indexContent));
 		pack.index.hash = indexHash;
 
-		// Save updated files
-		await this.github.createOrUpdateFile(
-			'index.toml',
-			indexContent,
-			`Remove ${modSlug} from index`,
-			indexSha
-		);
+		// Prepare files for commit
+		const filesToCommit: GitHubFile[] = [
+			{
+				path: 'index.toml',
+				content: indexContent,
+			},
+			{
+				path: 'pack.toml',
+				content: toml.stringify(pack),
+			},
+		];
 
-		await this.github.createOrUpdateFile(
-			'pack.toml',
-			toml.stringify(pack),
-			`Update pack index after removing ${modSlug}`,
-			packSha
-		);
+		// Note: GitHub GraphQL API doesn't support file deletion in createCommitOnBranch
+		// The mod files will remain in the repository but won't be referenced in the index
+		// You could implement file deletion using the REST API if needed
 
-		// TODO: Delete mod file (GitHub API doesn't support file deletion in createOrUpdateFileContents)
+		// Create single commit with all changes
+		await this.github.createCommit({
+			message: commitMessage,
+			files: filesToCommit,
+		});
 	}
+
+	// Check if a mod already exists in the index
+	async modExists(modSlug: string): Promise<boolean> {
+		try {
+			const { content: index } = await this.getIndexToml();
+			const modFilePath = `mods/${modSlug}.toml`;
+			return index.files.some((f) => f.file === modFilePath);
+		} catch {
+			return false;
+		}
+	}
+
+	// Get all existing mods from index
+	async getExistingMods(): Promise<string[]> {
+		try {
+			const { content: index } = await this.getIndexToml();
+			return index.files
+				.filter((f) => f.file.startsWith('mods/') && f.file.endsWith('.toml'))
+				.map((f) => f.file.replace('mods/', '').replace('.toml', ''));
+		} catch {
+			return [];
+		}
+	}
+}
+
+export function createInitialModpackFiles(
+	name: string,
+	creator: string,
+	mcVersion: string,
+	loader: string,
+	loaderversion: string,
+): { packToml: string; indexToml: string } {
+	const indexToml = `hash-format = "sha256"`;
+
+	const packToml = `name = "${name}"
+creator = "${creator}"
+
+[index]
+file = "index.toml"
+hash-format = "sha256"
+hash = "${hashString(indexToml)}"
+
+[versions]
+minecraft = "${mcVersion}"
+${loader} = "${loaderversion}"`;
+
+	return {
+		packToml,
+		indexToml,
+	};
 }

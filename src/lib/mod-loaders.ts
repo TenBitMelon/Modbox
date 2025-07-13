@@ -28,8 +28,8 @@ export const ModLoaders: Record<ModLoadersType, ModLoaderComponent> = {
 		name: 'fabric',
 		friendlyName: 'Fabric loader',
 		versionListGetter: fetchMavenVersionList(
-			'https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml'
-		)
+			'https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml',
+		),
 	},
 	// forge: {
 	// 	name: 'forge',
@@ -51,14 +51,14 @@ export const ModLoaders: Record<ModLoadersType, ModLoaderComponent> = {
 		name: 'quilt',
 		friendlyName: 'Quilt loader',
 		versionListGetter: fetchMavenVersionList(
-			'https://maven.quiltmc.org/repository/release/org/quiltmc/quilt-loader/maven-metadata.xml'
-		)
+			'https://maven.quiltmc.org/repository/release/org/quiltmc/quilt-loader/maven-metadata.xml',
+		),
 	},
 	neoforge: {
 		name: 'neoforge',
 		friendlyName: 'NeoForge',
-		versionListGetter: fetchNeoForge()
-	}
+		versionListGetter: fetchNeoForge(),
+	},
 };
 
 console.log(ModLoaders);
@@ -66,8 +66,8 @@ console.log(ModLoaders);
 async function fetchMavenXml(url: string): Promise<Document> {
 	const response = await fetch(url, {
 		headers: {
-			Accept: 'application/xml'
-		}
+			Accept: 'application/xml',
+		},
 	});
 	const text = await response.text();
 	return new DOMParser().parseFromString(text, 'application/xml');
@@ -85,7 +85,7 @@ function fetchMavenVersionList(url: string) {
 function fetchMavenVersionFiltered(
 	url: string,
 	friendlyName: string,
-	filter: (version: string, mcVersion: string) => boolean
+	filter: (version: string, mcVersion: string) => boolean,
 ) {
 	return async (mcVersion: string): Promise<[string[], string]> => {
 		const xml = await fetchMavenXml(url);
@@ -112,7 +112,7 @@ function fetchMavenVersionPrefixedListStrip(url: string, friendlyName: string) {
 		const [versions, latestVersion] = await noStrip(mcVersion);
 		return [
 			versions.map((v) => removeMcVersion(v, mcVersion)),
-			removeMcVersion(latestVersion, mcVersion)
+			removeMcVersion(latestVersion, mcVersion),
 		];
 	};
 }
@@ -132,11 +132,11 @@ function hasPrefixSplitDash(str: string, prefix: string): boolean {
 function fetchNeoForge() {
 	const neoforgeOld = fetchMavenVersionPrefixedListStrip(
 		'https://maven.neoforged.net/releases/net/neoforged/forge/maven-metadata.xml',
-		'NeoForge'
+		'NeoForge',
 	);
 	const neoforgeNew = fetchMavenWithNeoForgeStyleVersions(
 		'https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml',
-		'NeoForge'
+		'NeoForge',
 	);
 
 	return async (mcVersion: string): Promise<[string[], string]> => {
@@ -179,9 +179,9 @@ export async function getForgeRecommended(mcVersion: string): Promise<string> {
 			'https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json',
 			{
 				headers: {
-					Accept: 'application/json'
-				}
-			}
+					Accept: 'application/json',
+				},
+			},
 		);
 		const data: ForgeRecommended = await response.json();
 		return data.promos[`${mcVersion}-recommended`] || data.promos[`${mcVersion}-latest`] || '';

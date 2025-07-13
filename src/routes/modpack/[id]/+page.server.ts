@@ -78,6 +78,14 @@ export const actions = {
 			const tomlManager = new TomlManager(github);
 			const modrinthService = new ModrinthService();
 
+			// Get existing mods to avoid duplicates
+			const existingMods = new Set(await tomlManager.getExistingMods());
+
+			// Check if mod already exists
+			if (existingMods.has(modSlug)) {
+				return fail(400, { message: `${modSlug} is already in this modpack` });
+			}
+
 			// Get mod and its compatible version
 			const { project, version } = await modrinthService.getProjectWithVersion(
 				modSlug,
@@ -85,27 +93,37 @@ export const actions = {
 				modpack.mcVersion
 			);
 
-			// Resolve dependencies
-			const dependencies = await modrinthService.resolveModDependencies(
+			// Resolve all dependencies (including transitive ones)
+			const allMods = await modrinthService.resolveAllModDependencies(
 				project,
 				version,
 				modpack.loaderId,
-				modpack.mcVersion
+				modpack.mcVersion,
+				existingMods
 			);
 
-			// Add dependencies first
-			for (const dep of dependencies) {
-				const depModContent = modrinthService.createModTomlContent(dep.project, dep.version);
-				await tomlManager.addModToIndex(dep.project.slug, depModContent);
-			}
+			// Create mod file entries for all mods
+			const modFileEntries = allMods.map((mod) => ({
+				slug: mod.project.slug,
+				content: modrinthService.createModTomlContent(mod.project, mod.version)
+			}));
 
-			// Add main mod
-			const modContent = modrinthService.createModTomlContent(project, version);
-			await tomlManager.addModToIndex(project.slug, modContent);
+			// Create commit message
+			const newModNames = allMods.map((mod) => mod.project.title);
+			const commitMessage =
+				newModNames.length === 1
+					? `Add ${newModNames[0]}`
+					: `Add ${newModNames[0]} and ${newModNames.length - 1} dependencies`;
 
-			return {
-				success: `Successfully added ${project.title} and ${dependencies.length} dependencies`
-			};
+			// Add all mods in a single commit
+			await tomlManager.addModsBatch(modFileEntries, commitMessage);
+
+			const successMessage =
+				newModNames.length === 1
+					? `Successfully added ${newModNames[0]}`
+					: `Successfully added ${newModNames[0]} and ${newModNames.length - 1} dependencies (${newModNames.slice(1).join(', ')})`;
+
+			return { success: successMessage };
 		} catch (err) {
 			console.error('Error adding mod:', err);
 			return fail(500, { message: err instanceof Error ? err.message : 'Unknown error' });
@@ -140,7 +158,13 @@ export const actions = {
 			const github = new GitHubService(user.githubToken, modpack.githubUrl);
 			const tomlManager = new TomlManager(github);
 
-			await tomlManager.removeModFromIndex(modSlug);
+			// Check if mod exists
+			if (!(await tomlManager.modExists(modSlug))) {
+				return fail(400, { message: `${modSlug} is not in this modpack` });
+			}
+
+			// Remove mod in a single commit
+			await tomlManager.removeModsBatch([modSlug], `Remove ${modSlug}`);
 
 			return { success: `Successfully removed ${modSlug}` };
 		} catch (err) {
@@ -148,7 +172,6 @@ export const actions = {
 			return fail(500, { message: err instanceof Error ? err.message : 'Unknown error' });
 		}
 	},
-
 	deleteModpack: async ({ locals, params }) => {
 		const { user } = locals;
 		if (!user) {
