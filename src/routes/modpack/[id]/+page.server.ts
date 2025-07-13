@@ -7,9 +7,11 @@ import { modrinth } from '$lib/server/modrinth';
 import { Octokit, RequestError } from 'octokit';
 import { fromPromise } from 'neverthrow';
 import { parseGitHubUrl } from '$lib';
-import { encodeBase64 } from '@oslojs/encoding';
+import { decodeBase64, encodeBase64 } from '@oslojs/encoding';
 import type { Project } from 'typerinth';
 import { createModToml } from '$lib';
+import { sha256 } from '@oslojs/crypto/sha2';
+import toml from 'smol-toml';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const modpackId = params.id;
@@ -144,7 +146,7 @@ export const actions = {
 		// TODO: Make mod files for dependencies
 
 		// Make mod file for installed mod
-		const github = new Octokit({
+		const octokit = new Octokit({
 			auth: user.githubToken
 		});
 
@@ -153,8 +155,11 @@ export const actions = {
 		if (urlres.isErr()) error(500, { message: 'Invalid GitHub URL' });
 		const { owner, repo } = urlres.value;
 
+		const modFileContent = createModToml(mod, latestVersion);
+		const modFileHash = sha256(new TextEncoder().encode(modFileContent));
+
 		const createFileResp = await fromPromise(
-			github.rest.repos.createOrUpdateFileContents({
+			octokit.rest.repos.createOrUpdateFileContents({
 				owner: owner,
 				repo: repo,
 				path: `mods/${mod.slug}.toml`,
@@ -164,7 +169,101 @@ export const actions = {
 					name: 'ModBox',
 					email: 'modbox@modbox.com'
 				},
-				content: encodeBase64(new TextEncoder().encode(createModToml(mod, latestVersion)))
+				content: encodeBase64(new TextEncoder().encode(modFileContent))
+			}),
+			(e) => e as RequestError
+		);
+
+		const indexFileContentRes = await fromPromise(
+			octokit.rest.repos.getContent({
+				owner,
+				repo,
+				path: 'index.toml',
+				ref: 'heads/main'
+			}),
+			(e) => e as RequestError
+		);
+		let indexFileContent = 'hash-format = "sha256"';
+		if (
+			indexFileContentRes.isErr() ||
+			indexFileContentRes.value.status !== 200 ||
+			Array.isArray(indexFileContentRes.value.data) ||
+			indexFileContentRes.value.data.type !== 'file'
+		) {
+			error(500, { message: 'Error fetching index.toml (wrong type)' });
+		} else {
+			indexFileContent = indexFileContentRes.value.data.content;
+		}
+		indexFileContent = `${indexFileContent}
+
+[[files]]
+file = "modes/${mod.slug}.toml"
+hash = "${modFileHash}"
+metafile = true`;
+
+		const packTomlContentRes = await fromPromise(
+			octokit.rest.repos.getContent({
+				owner,
+				repo,
+				path: 'pack.toml',
+				ref: 'heads/main'
+			}),
+			(e) => e as RequestError
+		);
+		if (packTomlContentRes.isErr()) error(500, { message: 'Error fetching pack.toml' });
+		if (
+			packTomlContentRes.value.status !== 200 ||
+			Array.isArray(packTomlContentRes.value.data) ||
+			packTomlContentRes.value.data.type !== 'file'
+		) {
+			error(500, { message: 'Error fetching pack.toml' });
+		}
+		console.log(packTomlContentRes.value.data.content);
+		let packTomlContent = new TextDecoder().decode(
+			decodeBase64(packTomlContentRes.value.data.content.replaceAll('\n', ''))
+		);
+
+		console.log(packTomlContent);
+
+		const indexHash = encodeBase64(sha256(new TextEncoder().encode(indexFileContent)));
+
+		const packToml = toml.parse(packTomlContent);
+		packToml.index = { hash: indexHash };
+		packTomlContent = toml.stringify(packToml);
+
+		console.log(packTomlContent);
+
+		const packTomlUpdateRes = await fromPromise(
+			octokit.rest.repos.createOrUpdateFileContents({
+				owner: owner,
+				repo: repo,
+				path: 'pack.toml',
+				message: 'Update add mod',
+				branch: 'main',
+				sha: packTomlContentRes.value.data.sha,
+				committer: {
+					name: 'ModBox',
+					email: 'modbox@modbox.com'
+				},
+				content: encodeBase64(new TextEncoder().encode(packTomlContent))
+			}),
+			(e) => e as RequestError
+		);
+		if (packTomlUpdateRes.isErr()) error(500, packTomlUpdateRes.error);
+
+		const indexUpdateRes = await fromPromise(
+			octokit.rest.repos.createOrUpdateFileContents({
+				owner: owner,
+				repo: repo,
+				path: 'index.toml',
+				message: 'Update add mod',
+				branch: 'main',
+				sha: indexFileContentRes.value.data.sha,
+				committer: {
+					name: 'ModBox',
+					email: 'modbox@modbox.com'
+				},
+				content: encodeBase64(new TextEncoder().encode(indexFileContent))
 			}),
 			(e) => e as RequestError
 		);
