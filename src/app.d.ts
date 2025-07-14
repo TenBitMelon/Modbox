@@ -6,10 +6,14 @@ declare global {
 			user: import('$lib/server/auth').SessionValidationResult['user'];
 			session: import('$lib/server/auth').SessionValidationResult['session'];
 		}
-	} // interface Error {}
-	// interface Locals {}
-} // interface PageData {}
-// interface PageState {}
+		// interface Error {}
+		// interface Locals {}
+		interface PageData {
+			user: import('$lib/server/auth').SessionValidationResult['user'];
+		}
+		// interface PageState {}
+	}
+}
 
 // interface Platform {}
 export {};

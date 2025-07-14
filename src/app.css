@@ -7,6 +7,16 @@
 	}
 }
 
+@layer components {
+	.box {
+		border: 8px;
+		border-style: solid;
+		border-color: var(--color-neutral-300);
+		background-color: var(--color-white);
+		box-shadow: 0px 8px 0px var(--color-neutral-400);
+	}
+}
+
 @font-face {
 	font-family: 'Righteous';
 	src: url('/Righteous-Regular.woff2') format('woff2');

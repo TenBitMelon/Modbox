@@ -31,3 +31,12 @@ export function parseGitHubUrl(url: string): Result<{ owner: string; repo: strin
 	const [, owner, repo] = match;
 	return ok({ owner, repo });
 }
+
+export function abbreviateNumber(value: number): string {
+	const suffixes = ['', 'K', 'M', 'B', 'T'];
+	const suffixNum = Math.floor(('' + value).length / 3);
+	const shortValue: number = parseFloat(
+		(suffixNum !== 0 ? value / Math.pow(100, suffixNum) : value).toPrecision(2),
+	);
+	return shortValue + suffixes[suffixNum];
+}

@@ -5,11 +5,13 @@ import type { ModLoaders, ModLoadersType } from '$lib/mod-loaders';
 
 export interface ModpackIndex {
 	'hash-format': string;
-	files: Array<{
-		file: string;
-		hash: string;
-		metafile: boolean;
-	}>;
+	files:
+		| Array<{
+				file: string;
+				hash: string;
+				metafile: boolean;
+		  }>
+		| undefined;
 }
 
 export interface PackToml {
@@ -72,6 +74,9 @@ export class TomlManager {
 			const modFilePath = `mods/${mod.slug}.toml`;
 			const modHash = hashString(mod.content);
 
+			// Check if files is on index
+			if (index.files === undefined) index.files = [];
+
 			// Remove existing entry if it exists
 			index.files = index.files.filter((f) => f.file !== modFilePath);
 
@@ -121,6 +126,7 @@ export class TomlManager {
 		// Remove mod file entries from index
 		for (const modSlug of modSlugs) {
 			const modFilePath = `mods/${modSlug}.toml`;
+			if (index.files === undefined) index.files = [];
 			index.files = index.files.filter((f) => f.file !== modFilePath);
 		}
 
@@ -157,6 +163,7 @@ export class TomlManager {
 		try {
 			const { content: index } = await this.getIndexToml();
 			const modFilePath = `mods/${modSlug}.toml`;
+			if (index.files === undefined) index.files = [];
 			return index.files.some((f) => f.file === modFilePath);
 		} catch {
 			return false;
@@ -167,6 +174,7 @@ export class TomlManager {
 	async getExistingMods(): Promise<string[]> {
 		try {
 			const { content: index } = await this.getIndexToml();
+			if (index.files === undefined) index.files = [];
 			return index.files
 				.filter((f) => f.file.startsWith('mods/') && f.file.endsWith('.toml'))
 				.map((f) => f.file.replace('mods/', '').replace('.toml', ''));
